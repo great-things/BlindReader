@@ -1,0 +1,8 @@
+{
+	"info":{
+		"description":"Libraries specifically for this application"
+	},
+	"libraries":[
+		{"provides":["fm_is_pointer_down_ref", "fm_on_swipe", "fm_on_press", "fm_on_long_press", "fm_on_short_press"], "scriptUrl":"longPressSwipe.txt"}
+	]
+}

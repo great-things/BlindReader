@@ -1,0 +1,102 @@
+$fmIsPointerDownRef ? Var = false.
+onGlobalPointerUp: () fun {fmIsPointerDownRef = false}.
+$fmLastEventTimeRef ? Var = 0.
+$FM_MINIMUM_EVENT_DISTANCE = 1000.
+
+$fmTriggerEvent = !fun ($thingToDo) {
+    $now = !getCurrentDate.
+    !if (FM_MINIMUM_EVENT_DISTANCE < now - ~fmLastEventTimeRef) {
+        !thingToDo.
+    }.
+    fmLastEventTimeRef = !getCurrentDate.
+}.
+
+$fmOnSwipe = curry: !fun ($handler ; $input) {
+    $startXRef ? Var = \1.
+    $startYRef ? Var = \1.
+    $doneRef ? Var = true.
+    
+    @(onPointerDown: ($downX ; $downY) fun {
+        startXRef = downX.
+        startYRef = downY.
+        
+        fmIsPointerDownRef = true.
+    })
+    @(onPointerMove: ($moveX ; $moveY) fun {
+        !if ~fmIsPointerDownRef {
+            # Distance calculation
+            $xDifference = ~startXRef - moveX.
+            $yDifference = ~startYRef - moveY.
+            $distance = ((xDifference ^ 2) + (yDifference ^ 2)) ^ 0,5.
+            !if (distance > 15) {
+                fmTriggerEvent: {xDifference handler yDifference}
+            }.
+        }
+    }) input
+}.
+
+$fmOnPress = curry: !fun ($eventHandlers ; $input) {
+    $TIME_THRESHOLD = 750. #Time needed for a long press, in milliseconds
+    
+    $longPressHandler = $long propOf eventHandlers.
+    $shortPressHandler = $short propOf eventHandlers.
+    
+    $startTimeRef ? Var = void.
+    $doneRef ? Var = true.
+    $swipeRef ? Var = false.
+    
+    @(onPointerDown: () fun {
+        fmIsPointerDownRef = true.
+        startTimeRef = !getCurrentDate.
+        doneRef = false.
+        swipeRef = false.
+        
+        # Trigger a timer; if the threshold is reached without lifting the pointer, we have a long press
+        !runLater TIME_THRESHOLD -> {
+            !if (~fmIsPointerDownRef & (not: ~doneRef) & (not: ~swipeRef)) {doneRef = true. fmTriggerEvent: longPressHandler.}.
+        }
+    })
+    @(onTap: () fun {
+        # This standard event is triggered when the mouse is lifted over the element
+        !ifNot ~doneRef {
+            doneRef = true.
+            !if ((not: ~swipeRef) & TIME_THRESHOLD > (!getCurrentDate) - ~startTimeRef) {fmTriggerEvent: shortPressHandler}.
+        }.
+    })
+    @(fmOnSwipe: () fun {
+        # If we have a swipe, we do not want to recognize anything as a tap right now
+        swipeRef = true.
+        doneRef = true.
+        # showMessage: "SWIPE!".
+    })
+    input
+}.
+
+# Used by fmOnLongPress or fmOnShortPress only
+$fmAddOnPressAnnotationIfNeeded = !fun ($input) {
+    $getAnnotation = !fun () {$onPress propOf calcitAnnotations: input}.
+    
+    !if (void eq $onPress propOf calcitAnnotations: input) {
+        # Add an annotation with separate event handlers
+        @(["onPress"];[["shortRef"; Var: void];["longRef"; Var: void]]) input.
+        
+        # Register an onPress event
+        @(fmOnPress
+            [$short; () fun {do: get: $shortRef propOf !getAnnotation}];
+            [$long; () fun {do: get: $longRef propOf !getAnnotation}]
+        )
+            input
+    }
+}.
+$fmOnLongPress = curry: !fun ($handler ; $input) {
+    # Check if "input" has an "onPress" annotation already
+    !fmAddOnPressAnnotationIfNeeded input.
+    
+    ($longRef propOf $onPress propOf calcitAnnotations: input) = handler.
+}.
+$fmOnShortPress = curry: !fun ($handler ; $input) {
+    # Check if "input" has an "onPress" annotation already
+    !fmAddOnPressAnnotationIfNeeded input.
+    
+    ($shortRef propOf $onPress propOf calcitAnnotations: input) = handler.
+}.

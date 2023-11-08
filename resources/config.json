@@ -1,0 +1,12 @@
+{
+    "language": "de",
+    "voiceDemo": "Die ausgewählte Stimme klingt so",
+    "nextLevelHint": "Eine Ebene weiter. ",
+    "previousLevelHint": "Eine Ebene zurück. ",
+    "layerEmptyMessage": "Keine Daten für die nächste Ebene gefunden.",
+    "noLayerUpMessage": "Du bist auf der obersten Ebene",
+    "noLayerDownMessage": "Keine weitere Ebene verfügbar",
+    "noLayerItemUpMessage": "Du bist beim ersten Abschnitt angekommen",
+    "noLayerItemDownMessage": "Du bist beim letzten Abschnitt angekommen",
+    "guide": ["Tippen, um einen Abschnitt weiter zu gehen", "Lange tippen, um einen Abschnitt zurück zu gehen", "Von links nach rechts wischen, um eine Ebene weiter zu gehen", "Von rechts nach links wischen, um eine Ebene zurück zu gehen", "---", "Einrichtung: Stimme aus der Liste auswählen", "'Stimme anhören' drücken, um die Stimme zu testen", "'Diese Stimme auswählen' drücken, um Blind-Bedienung über Gesten zu starten"]
+}
