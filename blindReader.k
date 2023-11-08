@@ -172,10 +172,10 @@ print: !uiActionPicker voices -> {
     usedVoiceRef = (Int: x) at voices.
     say: $voiceDemo propOf config.
 }.
-print: !uiButton "Stimme anhören" -> {
+print: !uiButton $listenToVoice propOf config -> {
     say: $voiceDemo propOf config.
 }.
-print: !uiButton "Diese Stimme auswählen" -> {
+print: !uiButton $selectVoice propOf config -> {
     @(fmOnShortPress: {
         print: "goToNextLayerItem returned " + $stat = !goToNextLayerItem.
         say: !getTextForLayerStatus stat LAYER_ITEM_DOWN
