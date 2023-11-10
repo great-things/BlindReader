@@ -11,6 +11,7 @@ $indexesInHierarchyLayers ? ModifiableList = ().  # Will be filled with integers
 $NO_LAYER_SUPPORT = 0. # If there is no layer (or layer item)
 $LAYER_EMPTY = 1. # If there is a layer, but it is empty
 $LAYER_OK = 2. # If there is a layer and it is not empty. Or if there is a layer item
+$LAYER_CUSTOM = 3. # If the layer has custom behavior
 
 $goToNextLayerAsync = !fun ($then) {
     # Get the next layer from the hierarchy
@@ -39,6 +40,9 @@ $goToNextLayerAsync = !fun ($then) {
 }.
 
 $goToPreviousLayer = !fun () {
+    # If needed, run a custom action of the previous item
+    do: $onBeforePreviousLayer propOf print: !getCurrentLayerItem.
+    
     $lengthOfList = length: getArray: hierarchyLayers.
     !ifElse (1 eq lengthOfList) {
         # There is no previous layer (we are in the root layer)
@@ -54,29 +58,44 @@ $goToPreviousLayer = !fun () {
 }.
 
 $goToPreviousLayerItem = !fun () {
-    $currentIndex = last: getArray: indexesInHierarchyLayers.
-    !ifElse (0 eq currentIndex) {
-        `Return` NO_LAYER_SUPPORT
+    # Before we do anything: check if the layer item overrides the default behaviour
+    $currentLayerItem = !getCurrentLayerItem.
+    !ifElse (not: void eq $onPreviousLayerItem propOf currentLayerItem) {
+        do: $onPreviousLayerItem propOf currentLayerItem.
+        LAYER_CUSTOM
     };{
-        # We have a previous item!
-        $indexOfCurrentLayer = (length: getArray: indexesInHierarchyLayers) - 1.
-        indexOfCurrentLayer ($setIndex propOf indexesInHierarchyLayers) currentIndex - 1.
+        $currentIndex = last: getArray: indexesInHierarchyLayers.
+        !ifElse (0 eq currentIndex) {
+            `Return` NO_LAYER_SUPPORT
+        };{
+            # We have a previous item!
+            $indexOfCurrentLayer = (length: getArray: indexesInHierarchyLayers) - 1.
+            indexOfCurrentLayer ($setIndex propOf indexesInHierarchyLayers) currentIndex - 1.
 
-        `Return` LAYER_OK
+            `Return` LAYER_OK
+        }
     }
 }.
 
 $goToNextLayerItem = !fun () {
-    $currentIndex = last: getArray: indexesInHierarchyLayers.
-    $indexOfCurrentLayer = (length: getArray: indexesInHierarchyLayers) - 1.
-    !ifElse (currentIndex eq (length: indexOfCurrentLayer at getArray: hierarchyLayers) - 1) {
-        `Return` NO_LAYER_SUPPORT
+    # Before we do anything: check if the layer item overrides the default behaviour
+    $currentLayerItem = !getCurrentLayerItem.
+    !ifElse (not: void eq $onNextLayerItem propOf currentLayerItem) {
+        do: $onNextLayerItem propOf currentLayerItem.
+        LAYER_CUSTOM
     };{
-        # We have a previous item!
-        indexOfCurrentLayer ($setIndex propOf indexesInHierarchyLayers) currentIndex + 1.
-        
-        `Return` LAYER_OK
-    }
+        # Do the default action
+        $currentIndex = last: getArray: indexesInHierarchyLayers.
+        $indexOfCurrentLayer = (length: getArray: indexesInHierarchyLayers) - 1.
+        !ifElse (currentIndex eq (length: indexOfCurrentLayer at getArray: hierarchyLayers) - 1) {
+            `Return` NO_LAYER_SUPPORT
+        };{
+            # We have a previous item!
+            indexOfCurrentLayer ($setIndex propOf indexesInHierarchyLayers) currentIndex + 1.
+            
+            `Return` LAYER_OK
+        }
+    }.
 }.
 
 $getCurrentLayerItem = !fun () {
@@ -140,6 +159,28 @@ $titledUrlsFromRssUrlAsync = !fun ($withTitleUrlPairs; $rssUrl) {
         }.
     }.
 }.
+$titledAudioUrlsFromRssUrlAsync = !fun ($withTitleUrlPairs; $rssUrl) {
+    !speechCancel.
+    play: ~internetAccessSoundRef.
+    !loadGlobalAsync rssUrl -> $xmlString fun {
+        pause: ~internetAccessSoundRef.
+        ($setTime propOf ~internetAccessSoundRef): 0.
+        
+        $domObject = domParse: xmlString.
+        $items = "item" domTags domObject.
+        
+        # Do something with all the items
+        withTitleUrlPairs: {2 eq length: ;/ x} filter !each items -> $item fun {
+            $title = domInnerText: first: "title" domTags item.
+            $enclosure = first: "enclosure" domTags item.
+            $link = !if ("audio/" strStartsWith "type" domAttribute enclosure) {
+                `Return` "url" domAttribute enclosure
+            }.
+            
+            [title];[link].
+        }.
+    }.
+}.
 
 $paragraphsFromUrlAsync = !fun ($withParagraphs; $url) {
     !speechCancel.
@@ -164,7 +205,7 @@ $paragraphsFromUrlAsync = !fun ($withParagraphs; $url) {
 
 # Speech setup
 $config = parseJson: loadLocal: "/app/blindReader/resources/config.json".
-$rootHierarchy = parseJson: loadLocal: "/app/blindReader/resources/rootHierarchy.json".
+$rootHierarchy = parseJson: loadLocal: "/app/blindReader/resources/" + (default: "rootHierarchy.json"): appParameter: "root".
 $voices = speechGetVoicesByLanguage: $language propOf config.
 $usedVoiceRef ? Var = first: voices.
 
@@ -237,6 +278,44 @@ $rssFeedTreeGenerator = !fun ($feedUrl) {
         }.
     }
 }.
+$audioTreeItem = !fun ($audioUrl) {
+    # Load some audio
+    $playerRef ? Var = void.
+    !uiAudioPlayer audioUrl {
+        play: playerRef = x.
+    }.
+    
+    # Return a tree item that customizes the default controls
+    [
+        ["onNextLayerItem"; {
+            ($setTime propOf ~playerRef): (do: $getProgress propOf ~playerRef) + 60.
+            play: ~playerRef.
+        }];
+        ["onPreviousLayerItem"; {
+            ($setTime propOf ~playerRef): (do: $getProgress propOf ~playerRef) - 60.
+            play: ~playerRef.
+        }];
+        ["onBeforePreviousLayer"; {
+            # print: ~playerRef.
+            pause: ~playerRef.
+        }]
+    ]
+}.
+$podcastFeedTreeGenerator = !fun ($feedUrl) {
+    `Return` !fun ($withLayer) {
+        # Load stuff from the internet
+        !titledAudioUrlsFromRssUrlAsync feedUrl -> $titleUrlPairs fun {
+            withLayer: !each titleUrlPairs -> $pair fun {
+                # Construct a tree item
+                [$title; first: pair];
+                [$getLayerAsync; ($withLayer) fun {
+                    # Play the audio
+                    withLayer: audioTreeItem: second: pair
+                }]
+            }
+        }.
+    }
+}.
 $tvPrimetimeTreeGenerator = !fun ($feedUrl) {
     `Return` !fun ($withLayer) {
         # Load stuff from the internet
@@ -263,6 +342,7 @@ $tvPrimetimeTreeGenerator = !fun ($feedUrl) {
         # Which function do we use to get the tree item?
         $generatorFunction = first: ($generatorFunction propOf rootItemInfo) switchEq
             ["rssFeedTreeGenerator"; rssFeedTreeGenerator];
+            ["podcastFeedTreeGenerator"; podcastFeedTreeGenerator];
             ["tvPrimetimeTreeGenerator"; tvPrimetimeTreeGenerator].
         
         (generatorFunction: $input propOf rootItemInfo): withLayer
