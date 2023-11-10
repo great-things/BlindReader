@@ -170,7 +170,7 @@ $titledAudioUrlsFromRssUrlAsync = !fun ($withTitleUrlPairs; $rssUrl) {
         $items = "item" domTags domObject.
         
         # Do something with all the items
-        withTitleUrlPairs: {2 eq length: ;/ x} filter !each items -> $item fun {
+        $titleUrlPairs = {2 eq length: ;/ x} filter !each items -> $item fun {
             $title = domInnerText: first: "title" domTags item.
             $enclosure = first: "enclosure" domTags item.
             $link = !if ("audio/" strStartsWith "type" domAttribute enclosure) {
@@ -179,6 +179,10 @@ $titledAudioUrlsFromRssUrlAsync = !fun ($withTitleUrlPairs; $rssUrl) {
             
             [title];[link].
         }.
+        
+        withTitleUrlPairs:
+            [$language; [domInnerText: first: "language" domTags domObject]];
+            [$titleUrlPairs; [titleUrlPairs]]
     }.
 }.
 
@@ -304,9 +308,13 @@ $audioTreeItem = !fun ($audioUrl) {
 $podcastFeedTreeGenerator = !fun ($feedUrl) {
     `Return` !fun ($withLayer) {
         # Load stuff from the internet
-        !titledAudioUrlsFromRssUrlAsync feedUrl -> $titleUrlPairs fun {
+        !titledAudioUrlsFromRssUrlAsync feedUrl -> $result fun {
+            $titleUrlPairs = $titleUrlPairs propOf result.
+            $language = $language propOf result.
+            
             withLayer: !each titleUrlPairs -> $pair fun {
                 # Construct a tree item
+                (!ifNot (void eq language) {["language";language]});
                 [$title; first: pair];
                 [$getLayerAsync; ($withLayer) fun {
                     # Play the audio
