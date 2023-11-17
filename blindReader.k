@@ -12,6 +12,7 @@ $NO_LAYER_SUPPORT = 0. # If there is no layer (or layer item)
 $LAYER_EMPTY = 1. # If there is a layer, but it is empty
 $LAYER_OK = 2. # If there is a layer and it is not empty. Or if there is a layer item
 $LAYER_CUSTOM = 3. # If the layer has custom behavior
+$LAYER_CYCLE = 4. # If we went to the beginning or end
 
 $goToNextLayerAsync = !fun ($then) {
     # Get the next layer from the hierarchy
@@ -88,9 +89,16 @@ $goToNextLayerItem = !fun () {
         $currentIndex = last: getArray: indexesInHierarchyLayers.
         $indexOfCurrentLayer = (length: getArray: indexesInHierarchyLayers) - 1.
         !ifElse (currentIndex eq (length: indexOfCurrentLayer at getArray: hierarchyLayers) - 1) {
-            `Return` NO_LAYER_SUPPORT
+            # Maybe we have to go back to the first item?
+            !ifElse ($cycleItemsAfterLast propOf config) {
+                # Go back to first
+                indexOfCurrentLayer ($setIndex propOf indexesInHierarchyLayers) 0.
+                `Return` LAYER_CYCLE
+            };{
+                `Return` NO_LAYER_SUPPORT
+            }
         };{
-            # We have a previous item!
+            # We have a next item!
             indexOfCurrentLayer ($setIndex propOf indexesInHierarchyLayers) currentIndex + 1.
             
             `Return` LAYER_OK
@@ -124,7 +132,8 @@ $getTextForLayerStatus = !fun ($layerStatus; $layerDirection) {
                 [LAYER_UP; {$previousLevelHint propOf config}];
                 [LAYER_DOWN; {$nextLevelHint propOf config}]
         }];
-        [{(LAYER_OK eq x) | (NO_LAYER_SUPPORT eq x)}; {$title propOf !getCurrentLayerItem}].
+        [{LAYER_CYCLE eq x}; {$backToFirstItemMessage propOf config}];
+        [{(LAYER_OK eq x) | (NO_LAYER_SUPPORT eq x) | (LAYER_CYCLE eq x)}; {$title propOf !getCurrentLayerItem}].
 }.
 
 $getTextForLocationInHierarchy = !fun () {
@@ -220,7 +229,16 @@ print: !uiActionPicker voices -> {
 print: !uiButton $listenToVoice propOf config -> {
     say: $voiceDemo propOf config.
 }.
+print: !uiButton "FIX AUDIO" -> {
+    play: ~internetAccessSoundRef.
+    !runLater 1000 -> {
+        pause: ~internetAccessSoundRef.
+        ($setTime propOf ~internetAccessSoundRef): 0.
+    }.
+}.
 print: !uiButton $selectVoice propOf config -> {
+    
+    /*
     @(fmOnShortPress: {
         print: "goToNextLayerItem returned " + $stat = !goToNextLayerItem.
         say: !getTextForLayerStatus stat LAYER_ITEM_DOWN
@@ -247,6 +265,98 @@ print: !uiButton $selectVoice propOf config -> {
         print: "Secondary tap".
     })
     print: @(cssClass: "k-no_highlight") @front @windowTop @left @fullHeight @fullWidth @(backgroundColor black;122) uiContainer: ().
+    */
+    
+    # Very important for knowing the intended action
+    uiShowVariable: $initialStateReached ? Var = false.
+    uiShowVariable: $leftDownRef ? Var = false.
+    uiShowVariable: $rightDownRef ? Var = false.
+    uiShowVariable: $leftHasBeenUpRef ? Var = false.
+    uiShowVariable: $rightHasBeenUpRef ? Var = false.
+    
+    $bothFingersDown = !fun () {
+        ~rightDownRef & ~leftDownRef
+    }.
+    
+    $doAction = !fun () {
+        do: first: !switch void
+            [{~leftHasBeenUpRef & ~rightHasBeenUpRef}; {
+                print: "goToPreviousLayer returned " + $stat = !goToPreviousLayer.
+                say: !getTextForLayerStatus stat LAYER_UP
+            }];
+            [{~leftHasBeenUpRef}; {
+                print: "goToNextLayerItem returned " + $stat = !goToNextLayerItem.
+                say: !getTextForLayerStatus stat LAYER_ITEM_DOWN
+            }];
+            [{~rightHasBeenUpRef}; {
+                goToNextLayerAsync: $stat fun {
+                    print: "goToNextLayerAsync returned " + stat.
+                    say: !getTextForLayerStatus stat LAYER_DOWN
+                }.
+            }].
+
+        leftHasBeenUpRef = false.
+        rightHasBeenUpRef = false.
+    }.
+    
+    !listen leftDownRef $down fun {
+        !ifElse (~initialStateReached) {
+            # Default behavior
+            # Register if the finger has been up
+            !ifNot (down) {leftHasBeenUpRef = true.}.
+            # If both fingers are down, do a thing
+            !if bothFingersDown doAction.
+        };{
+            # Check if the initial state is reached
+            !ifElse bothFingersDown {
+                say: $fingersOnScreen propOf config.
+                initialStateReached = true.
+            };{
+                print: "L" + down.
+                !if down {say: $left propOf config}
+            }
+        }
+    }.
+
+    !listen rightDownRef $down fun {
+        !ifElse (~initialStateReached) {
+            # Default behavior
+            # Register if the finger has been up
+            !ifNot (down) {rightHasBeenUpRef = true.}.
+            # If both fingers are down, do a thing
+            !if bothFingersDown doAction.
+        };{
+            # Check if the initial state is reached
+            !ifElse bothFingersDown {
+                say: $fingersOnScreen propOf config.
+                initialStateReached = true.
+            };{
+                print: "R" + down.
+                !if down {say: $right propOf config}
+            }
+        }
+    }.
+
+    # Make a view with two big "buttons" - one left, one right
+    @(onPointerDown: () fun {
+        @(opacity 1) leftButton.
+        leftDownRef = true.
+    })
+    @(onPointerUp: () fun {
+        @(opacity 0,5) leftButton.
+        leftDownRef = false.
+    })
+    print: $leftButton = @(opacity 0,5) @front @windowTop @left @(backgroundColor red) @fullHeight @(percentWidth 50) uiContainer: ().
+
+    @(onPointerDown: () fun {
+        @(opacity 1) rightButton.
+        rightDownRef = true.
+    })
+    @(onPointerUp: () fun {
+        @(opacity 0,5) rightButton.
+        rightDownRef = false.
+    })
+    print: $rightButton = @(opacity 0,5) @front @windowTop @right @(backgroundColor 0;200;0) @fullHeight @(percentWidth 50) uiContainer: ().
     
     say: !getTextForLocationInHierarchy.
 }.

@@ -8,7 +8,12 @@
     "noLayerDownMessage": "Keine weitere Ebene verfügbar",
     "noLayerItemUpMessage": "Du bist beim ersten Abschnitt angekommen",
     "noLayerItemDownMessage": "Du bist beim letzten Abschnitt angekommen",
-    "guide": ["Tippen, um einen Abschnitt weiter zu gehen", "Lange tippen, um einen Abschnitt zurück zu gehen", "Von links nach rechts wischen, um eine Ebene weiter zu gehen", "Von rechts nach links wischen, um eine Ebene zurück zu gehen", "---", "Einrichtung: Stimme aus der Liste auswählen", "'Stimme anhören' drücken, um die Stimme zu testen", "'Diese Stimme auswählen' drücken, um Blind-Bedienung über Gesten zu starten"],
+    "guide": ["Zu Beginn einen Finger links und einen rechts auflegen", "Linken Finger heben und absetzen: Nächstes Element der Listen", "Rechten Finger heben und absetzen: Eine Ebene tiefer", "Beide Finger gleichzeitig heben und absetzen: Eine Ebene höher", "---", "Einrichtung: Stimme aus der Liste auswählen", "'Stimme anhören' drücken, um die Stimme zu testen", "'Diese Stimme auswählen' drücken, um Blind-Bedienung über Gesten zu starten"],
     "selectVoice": "Diese Stimme auswählen",
-    "listenToVoice": "Stimme anhören"
+    "listenToVoice": "Stimme anhören",
+    "fingersOnScreen": "Deine Finger liegen richtig auf",
+    "left": "Links",
+    "right": "Rechts",
+    "cycleItemsAfterLast": true,
+    "backToFirstItemMessage": "Zurück zum ersten Punkt"
 }
