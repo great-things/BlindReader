@@ -15,5 +15,7 @@
     "left": "Links",
     "right": "Rechts",
     "cycleItemsAfterLast": true,
-    "backToFirstItemMessage": "Zurück zum ersten Punkt"
+    "backToFirstItemMessage": "Zurück zum ersten Punkt",
+    "leftRightButtonNavigationView": "Navigation: Knöpfe links und rechts",
+    "swipeAndTapNavigationView": "Navigation: Wischen und tippen"
 }

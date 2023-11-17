@@ -222,51 +222,7 @@ $rootHierarchy = parseJson: loadLocal: "/app/blindReader/resources/" + (default:
 $voices = speechGetVoicesByLanguage: $language propOf config.
 $usedVoiceRef ? Var = first: voices.
 
-print: !uiActionPicker voices -> {
-    usedVoiceRef = (Int: x) at voices.
-    say: $voiceDemo propOf config.
-}.
-print: !uiButton $listenToVoice propOf config -> {
-    say: $voiceDemo propOf config.
-}.
-print: !uiButton "FIX AUDIO" -> {
-    play: ~internetAccessSoundRef.
-    !runLater 1000 -> {
-        pause: ~internetAccessSoundRef.
-        ($setTime propOf ~internetAccessSoundRef): 0.
-    }.
-}.
-print: !uiButton $selectVoice propOf config -> {
-    
-    /*
-    @(fmOnShortPress: {
-        print: "goToNextLayerItem returned " + $stat = !goToNextLayerItem.
-        say: !getTextForLayerStatus stat LAYER_ITEM_DOWN
-    })
-    @(fmOnLongPress: {
-        print: "goToPreviousLayerItem returned " + $stat = !goToPreviousLayerItem.
-        say: !getTextForLayerStatus stat LAYER_ITEM_UP
-    })
-    @(fmOnSwipe: ($x;$y) fun {
-        !ifElse (x > 0) {
-            # Left - go up
-            print: "goToPreviousLayer returned " + $stat = !goToPreviousLayer.
-            say: !getTextForLayerStatus stat LAYER_UP
-        };{
-            # Right - go a level deeper
-            goToNextLayerAsync: $stat fun {
-                print: "goToNextLayerAsync returned " + stat.
-                say: !getTextForLayerStatus stat LAYER_DOWN
-            }.
-        }.
-    })
-    @(onSecondaryTap: () fun {
-        say: !getTextForLocationInHierarchy.
-        print: "Secondary tap".
-    })
-    print: @(cssClass: "k-no_highlight") @front @windowTop @left @fullHeight @fullWidth @(backgroundColor black;122) uiContainer: ().
-    */
-    
+$showLeftRightButtonNavigationView = !fun () {
     # Very important for knowing the intended action
     uiShowVariable: $initialStateReached ? Var = false.
     uiShowVariable: $leftDownRef ? Var = false.
@@ -357,9 +313,65 @@ print: !uiButton $selectVoice propOf config -> {
         rightDownRef = false.
     })
     print: $rightButton = @(opacity 0,5) @front @windowTop @right @(backgroundColor 0;200;0) @fullHeight @(percentWidth 50) uiContainer: ().
-    
-    say: !getTextForLocationInHierarchy.
 }.
+
+$showSwipeAndTapNavigationView = !fun () {
+    @(fmOnShortPress: {
+        print: "goToNextLayerItem returned " + $stat = !goToNextLayerItem.
+        say: !getTextForLayerStatus stat LAYER_ITEM_DOWN
+    })
+    @(fmOnLongPress: {
+        print: "goToPreviousLayerItem returned " + $stat = !goToPreviousLayerItem.
+        say: !getTextForLayerStatus stat LAYER_ITEM_UP
+    })
+    @(fmOnSwipe: ($x;$y) fun {
+        !ifElse (x > 0) {
+            # Left - go up
+            print: "goToPreviousLayer returned " + $stat = !goToPreviousLayer.
+            say: !getTextForLayerStatus stat LAYER_UP
+        };{
+            # Right - go a level deeper
+            goToNextLayerAsync: $stat fun {
+                print: "goToNextLayerAsync returned " + stat.
+                say: !getTextForLayerStatus stat LAYER_DOWN
+            }.
+        }.
+    })
+    @(onSecondaryTap: () fun {
+        say: !getTextForLocationInHierarchy.
+        print: "Secondary tap".
+    })
+    print: @(cssClass: "k-no_highlight") @front @windowTop @left @fullHeight @fullWidth @(backgroundColor black;122) uiContainer: ().
+}.
+
+print: !uiActionPicker voices -> {
+    usedVoiceRef = (Int: x) at voices.
+    say: $voiceDemo propOf config.
+}.
+print: !uiButton $listenToVoice propOf config -> {
+    say: $voiceDemo propOf config.
+}.
+
+$navigationViewFactoryIndexRef ? Var = 0.
+$navigationViewFactoryOptions =
+    showLeftRightButtonNavigationView; showSwipeAndTapNavigationView.
+
+print: !uiPicker navigationViewFactoryIndexRef
+    [("leftRightButtonNavigationView" propOf config); 0];
+    [("swipeAndTapNavigationView" propOf config); 1].
+
+print: !uiButton $selectVoice propOf config -> {
+    do: ~navigationViewFactoryIndexRef at navigationViewFactoryOptions.
+    
+    play: ~internetAccessSoundRef.
+    !runLater 1000 -> {
+        pause: ~internetAccessSoundRef.
+        ($setTime propOf ~internetAccessSoundRef): 0.
+        
+        say: !getTextForLocationInHierarchy.
+    }.
+}.
+
 print: uiContainer: $guide propOf config.
 
 $say = !fun ($text) {
